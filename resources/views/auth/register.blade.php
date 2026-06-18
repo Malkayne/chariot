@@ -448,12 +448,12 @@
           @enderror
         </div>
 
-        {{-- Email (Optional) --}}
+        {{-- Email (Required) --}}
         <div class="form-group-c">
           <label class="form-label-c" for="email">
             <i class="fa-solid fa-envelope" style="color:var(--clr-gold-mid)"></i>
             Email
-            <span class="label-optional">(optional – for OTP)</span>
+            <span class="text-danger">*</span>
           </label>
           <input
             type="email"
@@ -462,6 +462,7 @@
             class="input-chariot @error('email') is-invalid @enderror"
             placeholder="your@email.com"
             value="{{ old('email') }}"
+            required
           >
           @error('email')
             <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i>{{ $message }}</div>

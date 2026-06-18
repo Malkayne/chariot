@@ -23,9 +23,10 @@ class RideStatusChanged implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'request_id' => $this->rideRequest->id,
-            'status'     => $this->rideRequest->status,
-            'ride_id'    => $this->rideRequest->ride_id,
+            'request_id'  => $this->rideRequest->id,
+            'status'      => $this->rideRequest->status,
+            'ride_id'     => $this->rideRequest->ride_id,
+            'driver_name' => $this->rideRequest->ride->driver->name ?? 'Your driver',
         ];
     }
 

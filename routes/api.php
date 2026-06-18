@@ -33,6 +33,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/driver/rides/{ride}/complete',          [RideController::class, 'complete']);
 
     // ── RIDER: RIDE BROWSING & REQUESTING ─────────────────────────────
+    Route::get('/my-requests',                            [RideController::class, 'myRequests']);
+    Route::get('/my-requests-incoming',                   [RideController::class, 'myRequestsIncoming']);
     Route::get('/rides/nearby',                           [RideController::class, 'nearby']);
     Route::post('/rides/{ride}/request',                  [RideController::class, 'requestRide'])
         ->middleware('ride.ratelimit');

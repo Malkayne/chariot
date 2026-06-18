@@ -108,6 +108,11 @@ class RideController extends Controller
 
         $rideRequest->accept();
 
+        // Transition driver status to on_trip if they were not already on a trip
+        if ($driver->driverProfile && $driver->driverProfile->status !== 'on_trip') {
+            $driver->driverProfile->goOnTrip();
+        }
+
         // Notify rider
         Notification::create([
             'user_id' => $rideRequest->rider_id,
@@ -177,9 +182,10 @@ class RideController extends Controller
 
     public function nearby(Request $request): JsonResponse
     {
-        $lat  = $request->float('lat', 0);
-        $lng  = $request->float('lng', 0);
-        $toId = $request->integer('to_zone_id', 0);
+        $lat    = $request->float('lat', 0);
+        $lng    = $request->float('lng', 0);
+        $toId   = $request->integer('to_zone_id', 0);
+        $fromId = $request->integer('from_zone_id', 0);
 
         $query = Ride::with(['driver.driverProfile', 'fromZone', 'toZone'])
             ->active();
@@ -188,7 +194,15 @@ class RideController extends Controller
             $query->where('to_zone_id', $toId);
         }
 
-        $rides = $query->get()->filter(function (Ride $ride) use ($lat, $lng) {
+        if ($fromId) {
+            $query->where('from_zone_id', $fromId);
+        }
+
+        $rides = $query->get()->filter(function (Ride $ride) use ($lat, $lng, $fromId) {
+            if ($fromId) {
+                return true; // Already filtered by from_zone_id
+            }
+
             if ($lat == 0 && $lng == 0) {
                 return true; // No GPS — return all
             }
@@ -222,14 +236,13 @@ class RideController extends Controller
             return response()->json(['error' => 'This ride is full.'], 409);
         }
 
-        // Check if rider already has a pending/accepted request on this ride
-        $exists = RideRequest::where('ride_id', $ride->id)
-            ->where('rider_id', $rider->id)
+        // Check if rider already has a pending/accepted request on any ride
+        $hasActiveRequest = RideRequest::where('rider_id', $rider->id)
             ->whereIn('status', ['pending', 'accepted'])
             ->exists();
 
-        if ($exists) {
-            return response()->json(['error' => 'You already have a request for this ride.'], 409);
+        if ($hasActiveRequest) {
+            return response()->json(['error' => 'You already have an active ride request.'], 409);
         }
 
         $rideRequest = RideRequest::create([
@@ -271,5 +284,40 @@ class RideController extends Controller
         $rideRequest->update(['status' => 'cancelled']);
 
         return response()->json(['success' => true]);
+    }
+
+    // ── RIDER: Get own requests list ──────────────────────────────────
+
+    public function myRequests(Request $request): JsonResponse
+    {
+        $requests = $request->user()->rideRequests()
+            ->with(['ride.driver.driverProfile', 'ride.fromZone', 'ride.toZone'])
+            ->latest()
+            ->get();
+
+        return response()->json($requests);
+    }
+
+    // ── DRIVER: Get incoming requests list ────────────────────────────
+
+    public function myRequestsIncoming(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $activeRide = Ride::where('driver_id', $user->id)
+            ->whereIn('status', ['active', 'full'])
+            ->latest()
+            ->first();
+
+        if (!$activeRide) {
+            return response()->json([]);
+        }
+
+        $requests = $activeRide->requests()
+            ->with('rider')
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        return response()->json($requests);
     }
 }

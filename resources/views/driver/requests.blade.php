@@ -407,13 +407,13 @@
 
           <div class="req-actions">
             <button
-              class="btn-accept btn-chariot"
+              class="btn-accept btn-chariot btn-success-c"
               data-request-id="{{ $req->id }}"
             >
               <i class="fa-solid fa-circle-check"></i> Accept
             </button>
             <button
-              class="btn-decline btn-chariot"
+              class="btn-decline btn-chariot btn-danger-c"
               data-request-id="{{ $req->id }}"
             >
               <i class="fa-solid fa-circle-xmark"></i> Decline

@@ -38,7 +38,7 @@
 
   @media (min-width: 768px) {
     #chariotMap {
-      left: 240px; /* beside sidebar */
+      left: 0; /* starts at left edge of chariot-content wrapper */
       bottom: 0;
     }
   }
@@ -74,7 +74,7 @@
 
   @media (min-width: 768px) {
     .bottom-sheet {
-      left: 248px;
+      left: 8px; /* 8px offset inside the map bounds */
       bottom: 8px;
       right: auto;
       width: 380px;
@@ -445,21 +445,51 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
 
-  /* ── 4. GPS CHIP — updated by Chariot.Map when location is known ── */
-  const origOnLocation = Chariot.Rider.onLocationKnown.bind(Chariot.Rider);
-  Chariot.Rider.onLocationKnown = function (lat, lng) {
-    origOnLocation(lat, lng);
+  /* ── 4. GPS CHIP — listen for Chariot.Map._locateUser resolution ──
+     chariot.js calls Chariot.Rider.onLocationKnown() when GPS resolves.
+     We hook into that by decorating it BEFORE the map inits, but
+     chariot.js init runs before this script. So we patch it here and
+     also check immediately if location is already known. */
 
+  const _updateGpsChip = (found) => {
     const chip  = document.getElementById('gpsChip');
     const label = document.getElementById('gpsChipText');
-    if (chip && label) {
+    if (!chip || !label) return;
+    if (found) {
       chip.className  = 'gps-chip is-found';
-      label.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i>Location detected`;
+      label.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Location detected';
+      /* Expand sheet once location is known */
+      sheet.classList.remove('is-collapsed');
+    } else {
+      chip.className  = 'gps-chip';
+      chip.querySelector('i').className = 'fa-solid fa-circle-exclamation';
+      label.textContent = 'Location unavailable';
     }
-
-    /* Expand sheet once location is known */
-    sheet.classList.remove('is-collapsed');
   };
+
+  /* Patch onLocationKnown to also update the GPS chip on this page */
+  const _origOnLocation = Chariot.Rider.onLocationKnown.bind(Chariot.Rider);
+  Chariot.Rider.onLocationKnown = function (lat, lng) {
+    _origOnLocation(lat, lng);
+    _updateGpsChip(true);
+  };
+
+  /* If GPS was already resolved before this script ran (unlikely but safe) */
+  if (Chariot.Rider._locationReady) {
+    _updateGpsChip(true);
+  }
+
+  /* Fallback: if location never resolves in 15s, show error in chip + clear skeleton */
+  setTimeout(() => {
+    if (!Chariot.Rider._locationReady) {
+      _updateGpsChip(false);
+      /* Also clear the driver chips skeleton with a helpful message */
+      const chipsWrap = document.getElementById('driverChipsWrap');
+      if (chipsWrap && chipsWrap.querySelector('.skeleton')) {
+        chipsWrap.innerHTML = '<span class="text-muted-c text-sm" style="padding:8px 0">Enable location access to see nearby drivers.</span>';
+      }
+    }
+  }, 15000);
 
 
   /* ── 5. DRIVER CHIPS count update ── */
@@ -473,24 +503,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const mo = new MutationObserver(() => {
       const count = chipsWrap.querySelectorAll('.driver-chip').length;
       peekCount.textContent = count > 0 ? `${count} available` : 'None nearby';
-      if (refreshTime) refreshTime.textContent = 'Updated just now';
+      if (refreshTime && !refreshTime.textContent) {
+        refreshTime.textContent = 'Updated just now';
+      }
     });
     mo.observe(chipsWrap, { childList: true, subtree: true });
   }
-
-
-  /* ── 6. WS STATUS TEXT ── */
-  /* chariot.js Realtime._setConnectionStatus() updates #wsStatus dot.
-     Mirror the status in the text label. */
-  const wsText = document.getElementById('wsStatusText');
-  const wsDot  = document.getElementById('wsStatusDot');
-
-  /* Poll dot class to update text (simple, avoids tight coupling) */
-  setInterval(() => {
-    if (!wsDot || !wsText) return;
-    const online = wsDot.classList.contains('online');
-    wsText.textContent = online ? 'Live' : 'Offline';
-  }, 3000);
 
 });
 </script>

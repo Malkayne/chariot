@@ -400,8 +400,14 @@ document.addEventListener('DOMContentLoaded', function () {
   let selectedRideId   = null;
   let selectedRideData = null;
 
-  /* ── 1. AUTO-SEARCH on load ── */
-  Chariot.Rider.findRides();
+  /* ── 1. AUTO-SEARCH on load ──
+     chariot.js global init also triggers findRides() for riders on
+     pages with #rideListContainer and guards with _findRidesAutoStarted.
+     We set the flag here too and trigger manually so both can't double-fire. */
+  if (!Chariot.Rider._findRidesAutoStarted) {
+    Chariot.Rider._findRidesAutoStarted = true;
+    Chariot.Rider.findRides();
+  }
 
   /* Zone changes + button re-trigger search */
   document.getElementById('toZoneSelect')?.addEventListener('change',
@@ -548,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const observer = new MutationObserver(patchCards);
   const listContainer = document.getElementById('rideListContainer');
   if (listContainer) {
-    observer.observe(listContainer, { childList: true, subtree: false });
+    observer.observe(listContainer, { childList: true, subtree: true });
   }
 
 });

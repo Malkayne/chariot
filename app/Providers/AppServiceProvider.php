@@ -21,5 +21,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
+
+        view()->composer('layouts.app', function ($view) {
+            if (auth()->check() && auth()->user()->role === 'rider') {
+                $pendingCount = auth()->user()
+                    ->rideRequests()
+                    ->where('status', 'pending')
+                    ->count();
+                $view->with('pendingCount', $pendingCount);
+            }
+        });
     }
 }

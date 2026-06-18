@@ -16,7 +16,7 @@ class RegisterRequest extends FormRequest
         return [
             'name'           => ['required', 'string', 'max:100'],
             'phone'          => ['required', 'string', 'max:20', 'unique:users,phone'],
-            'email'          => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'email'          => ['required', 'email', 'max:255', 'unique:users,email'],
             'password'       => ['required', 'string', 'min:6', 'confirmed'],
             'role'           => ['required', 'in:rider,driver'],
             'rccg_member_id' => ['nullable', 'string', 'max:60'],

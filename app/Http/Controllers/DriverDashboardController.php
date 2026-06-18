@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ride;
 use App\Models\Zone;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DriverDashboardController extends Controller
@@ -88,5 +89,52 @@ class DriverDashboardController extends Controller
             ->paginate(15);
 
         return view('driver.history', compact('rides'));
+    }
+
+    /**
+     * Driver profile view.
+     */
+    public function profile(): View
+    {
+        $user    = auth()->user();
+        $profile = $user->driverProfile;
+
+        $totalTrips      = Ride::where('driver_id', $user->id)->where('status', 'completed')->count();
+        $totalPassengers = \App\Models\RideRequest::whereHas('ride', fn($q) => $q->where('driver_id', $user->id))
+            ->where('status', 'completed')->count();
+
+        return view('driver.profile', compact('user', 'profile', 'totalTrips', 'totalPassengers'));
+    }
+
+    /**
+     * Update driver profile.
+     */
+    public function updateProfile(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user    = auth()->user();
+        $profile = $user->driverProfile;
+
+        $validated = $request->validate([
+            'name'          => ['required', 'string', 'max:100'],
+            'email'         => ['nullable', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'vehicle_model' => ['required', 'string', 'max:100'],
+            'vehicle_color' => ['required', 'string', 'max:50'],
+            'plate_number'  => ['required', 'string', 'max:30'],
+            'total_seats'   => ['required', 'integer', 'min:1', 'max:30'],
+        ]);
+
+        $user->update([
+            'name'  => $validated['name'],
+            'email' => $validated['email'],
+        ]);
+
+        $profile->update([
+            'vehicle_model' => $validated['vehicle_model'],
+            'vehicle_color' => $validated['vehicle_color'],
+            'plate_number'  => $validated['plate_number'],
+            'total_seats'   => $validated['total_seats'],
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Profile updated successfully.']);
     }
 }

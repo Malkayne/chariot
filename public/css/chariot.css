@@ -475,7 +475,7 @@ h6 { font-size: var(--text-base); }
   border-right: 1px solid rgba(201, 162, 39, 0.15);
   display: flex;
   flex-direction: column;
-  z-index: 1035;
+  z-index: 1045;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
@@ -649,7 +649,7 @@ h6 { font-size: var(--text-base); }
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
-  z-index: 1034;
+  z-index: 1044;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s ease;
@@ -1150,6 +1150,19 @@ h6 { font-size: var(--text-base); }
   border-color: var(--clr-gold-mid);
   color: var(--clr-gold-mid);
   background: rgba(201, 162, 39, 0.05);
+}
+
+/* ── Success ── */
+.btn-success-c {
+  background: var(--clr-success);
+  color: white;
+  border-color: var(--clr-success);
+}
+
+.btn-success-c:hover {
+  background: var(--clr-success-dark);
+  border-color: var(--clr-success-dark);
+  color: white;
 }
 
 /* ── Danger ── */

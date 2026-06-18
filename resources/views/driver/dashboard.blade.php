@@ -765,11 +765,11 @@
   <div class="section-label">Today's Summary</div>
   <div class="today-stats">
     <div class="today-stat-item">
-      <div class="today-stat-val" style="color:var(--clr-green-mid)">{{ $todayTrips ?? 0 }}</div>
+      <div class="today-stat-val" style="color:var(--clr-green-mid)">{{ $totalTrips ?? 0 }}</div>
       <div class="today-stat-lbl">Trips</div>
     </div>
     <div class="today-stat-item">
-      <div class="today-stat-val" style="color:var(--clr-gold-mid)">{{ $todayRiders ?? 0 }}</div>
+      <div class="today-stat-val" style="color:var(--clr-gold-mid)">{{ $totalPassengers ?? 0 }}</div>
       <div class="today-stat-lbl">Riders</div>
     </div>
     <div class="today-stat-item">

@@ -59,6 +59,8 @@ Route::middleware(['auth', 'verified.member', 'is.driver'])
         Route::get('/dashboard', [DriverDashboardController::class, 'index'])->name('dashboard');
         Route::get('/requests',  [DriverDashboardController::class, 'requests'])->name('requests');
         Route::get('/history',   [DriverDashboardController::class, 'history'])->name('history');
+        Route::get('/profile',   [DriverDashboardController::class, 'profile'])->name('profile');
+        Route::put('/profile',   [DriverDashboardController::class, 'updateProfile'])->name('profile.update');
     });
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────

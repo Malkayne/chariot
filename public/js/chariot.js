@@ -1132,6 +1132,12 @@ Chariot.Map = {
   _locateUser() {
     if (!navigator.geolocation) return;
 
+    const geoOpts = {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 0,   /* always request a fresh fix — no cached position */
+    };
+
     navigator.geolocation.getCurrentPosition(
       pos => {
         const { latitude: lat, longitude: lng } = pos.coords;
@@ -1142,23 +1148,48 @@ Chariot.Map = {
         /* Broadcast user coords to Rider module */
         Chariot.Rider?.onLocationKnown?.(lat, lng);
 
-        /* Watch for movement */
-        navigator.geolocation.watchPosition(p => {
-          const { latitude: la, longitude: lo } = p.coords;
-          this.userCoords = { lat: la, lng: lo };
-          this._setUserMarker(la, lo);
-          /* If driver — send to server */
-          if (Chariot.Config.userRole() === 'driver') {
-            Chariot.Driver?.broadcastLocation?.(la, lo);
-          }
-        }, null, { enableHighAccuracy: true, maximumAge: 5000 });
+        /* Watch for movement — high accuracy + no cached positions */
+        this._watchId = navigator.geolocation.watchPosition(
+          p => {
+            const { latitude: la, longitude: lo } = p.coords;
+            this.userCoords = { lat: la, lng: lo };
+            this._setUserMarker(la, lo);
+            /* Keep Rider module in sync */
+            Chariot.Rider?.onLocationKnown?.(la, lo);
+            /* If driver — send to server */
+            if (Chariot.Config.userRole() === 'driver') {
+              Chariot.Driver?.broadcastLocation?.(la, lo);
+            }
+          },
+          watchErr => {
+            console.warn('[Chariot.Map] watchPosition error:', watchErr.message);
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+        );
       },
       err => {
         console.warn('[Chariot.Map] Geolocation unavailable:', err.message);
+        /* Show a toast so the rider knows location is unavailable */
+        if (Chariot.Config.userRole() === 'rider') {
+          Chariot.Toast.warning(
+            'Could not get your precise location. Enable GPS / location permissions for best results.',
+            'Location Unavailable'
+          );
+        }
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      geoOpts
     );
   },
+
+  /* Stop watching GPS (e.g. on page teardown) */
+  _stopLocating() {
+    if (this._watchId != null) {
+      navigator.geolocation.clearWatch(this._watchId);
+      this._watchId = null;
+    }
+  },
+
+  _watchId: null,
 
   _setUserMarker(lat, lng) {
     const icon = L.divIcon({
@@ -1442,15 +1473,23 @@ Chariot.Realtime = {
       });
   },
 
-  /* ── 10e. Driver — connection status indicator ── */
+  /* ── 10e. Connection status indicator ── */
 
   _setConnectionStatus(online) {
-    const indicator = $('#wsStatus');
-    if (!indicator) return;
-    indicator.title     = online ? 'Live updates connected' : 'Live updates disconnected';
-    indicator.className = online
-      ? 'ws-status-dot online'
-      : 'ws-status-dot offline';
+    /* Update the dot element inside #wsStatus */
+    const dot  = $('#wsStatusDot');
+    const text = $('#wsStatusText');
+    const wrap = $('#wsStatus');
+
+    if (dot) {
+      dot.className = online ? 'ws-status-dot online' : 'ws-status-dot';
+    }
+    if (text) {
+      text.textContent = online ? 'Live' : 'Offline';
+    }
+    if (wrap) {
+      wrap.title = online ? 'Live updates connected' : 'Live updates disconnected';
+    }
   },
 };
 
@@ -1465,6 +1504,8 @@ Chariot.Rider = {
   userLng:    null,
   rides:      [],
   pollTimer:  null,
+  _locationReady: false,
+  _homeChipsFetched: false,
 
   /* Called by Map when GPS is available */
   onLocationKnown(lat, lng) {
@@ -1476,6 +1517,61 @@ Chariot.Rider = {
     const lngInput = $('#userLng');
     if (latInput) latInput.value = lat;
     if (lngInput) lngInput.value = lng;
+
+    /* On the home page, load nearby driver chips once location is known */
+    if ($('#driverChipsWrap') && !this._homeChipsFetched) {
+      this._homeChipsFetched = true;
+      this._fetchHomeDriverChips();
+    }
+
+    this._locationReady = true;
+  },
+
+  /* ── Fetch driver chips for the home page bottom sheet ── */
+  async _fetchHomeDriverChips() {
+    const wrap = $('#driverChipsWrap');
+    if (!wrap) return;
+
+    try {
+      const params = new URLSearchParams();
+      if (this.userLat) params.set('lat', this.userLat);
+      if (this.userLng) params.set('lng', this.userLng);
+
+      const data = await Chariot.Util.get(`/api/rides/nearby?${params}`);
+      this.rides = data;
+
+      /* Render chips */
+      this._renderDriverChips(data);
+
+      /* Also drop markers on the map */
+      data.forEach(ride => {
+        const p = ride.driver?.driver_profile;
+        if (p?.current_lat) {
+          Chariot.Map.setDriverMarker(
+            ride.driver.id,
+            parseFloat(p.current_lat),
+            parseFloat(p.current_lng),
+            {
+              name: ride.driver.name,
+              vehicle: `${p.vehicle_color ?? ''} ${p.vehicle_model ?? ''}`.trim(),
+              seats: ride.available_seats,
+              status: p.status,
+            }
+          );
+        }
+      });
+
+      /* Update refresh timestamp */
+      const ts = $('#nearbyRefreshTime');
+      if (ts) ts.textContent = 'Updated just now';
+
+    } catch (err) {
+      /* Show a simple message instead of skeleton */
+      const wrap = $('#driverChipsWrap');
+      if (wrap) {
+        wrap.innerHTML = `<span class="text-muted-c text-sm" style="padding:8px 0">Could not load nearby drivers.</span>`;
+      }
+    }
   },
 
   /* ── 11a. Find nearby rides ── */
@@ -1668,8 +1764,14 @@ Chariot.Rider = {
   /* ── 11b. Request a ride ── */
 
   async requestRide(rideId, btn) {
+    if (typeof window.openRequestModal === 'function') {
+      window.openRequestModal(rideId);
+      return;
+    }
+
     /* Optional pickup note */
-    const note = prompt('Any pickup note for the driver? (optional)') ?? '';
+    const note = prompt('Any pickup note for the driver? (optional)');
+    if (note === null) return; // User clicked Cancel
 
     Chariot.Buttons.setLoading(btn, true);
     try {
@@ -1694,7 +1796,7 @@ Chariot.Rider = {
     try {
       await Chariot.Util.delete(`/api/rides/${requestId}/cancel-request`);
       Chariot.Toast.info('Request cancelled.');
-      btn.closest('.ride-card, .request-card')?.remove();
+      btn.closest('.ride-card, .request-card, .my-ride-card')?.remove();
     } catch (err) {
       Chariot.Toast.error(err.message || 'Could not cancel request.');
     } finally {
@@ -1952,13 +2054,13 @@ Chariot.Driver = {
     try {
       await Chariot.Util.post(`/api/driver/requests/${requestId}/${action}`);
 
-      const card = btn.closest('.request-card');
+      const card = btn.closest('.req-card');
 
       if (action === 'accept') {
         Chariot.Toast.success('Rider accepted!', 'Accepted');
         /* Replace card with accepted-rider row */
-        const name = card?.querySelector('.request-rider-name')?.textContent ?? 'Rider';
-        const row  = el('div', 'accepted-rider-row anim-scale-in');
+        const name = card?.querySelector('.req-rider-name')?.textContent ?? 'Rider';
+        const row  = Chariot.Util.el('div', 'accepted-rider-row anim-scale-in');
         row.innerHTML = `
           <i class="fa-solid fa-circle-check" style="color:var(--clr-success)"></i>
           <span class="accepted-rider-name">${name}</span>
@@ -2011,8 +2113,33 @@ Chariot.Driver = {
 
   /* ── 12f. Location broadcast loop ── */
 
+  watchId: null,
+
   _startLocationLoop() {
     this._stopLocationLoop();
+
+    if (!Chariot.Map.userCoords && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          Chariot.Map.userCoords = { lat, lng };
+          this.broadcastLocation(lat, lng);
+        },
+        null,
+        { enableHighAccuracy: true }
+      );
+
+      this.watchId = navigator.geolocation.watchPosition(
+        pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          Chariot.Map.userCoords = { lat, lng };
+          this.broadcastLocation(lat, lng);
+        },
+        null,
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      );
+    }
+
     this.locationTimer = setInterval(() => {
       const coords = Chariot.Map.userCoords;
       if (coords) this.broadcastLocation(coords.lat, coords.lng);
@@ -2022,6 +2149,10 @@ Chariot.Driver = {
   _stopLocationLoop() {
     clearInterval(this.locationTimer);
     this.locationTimer = null;
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
   },
 
   async broadcastLocation(lat, lng) {
@@ -2056,25 +2187,25 @@ Chariot.Driver = {
       const rider = req.rider || {};
       const initials = (rider.name || 'R').slice(0, 2).toUpperCase();
       return `
-        <div class="request-card is-pending anim-fade-up" data-id="${req.id}">
-          <div class="request-card-top">
+        <div class="req-card is-pending anim-fade-up" data-id="${req.id}">
+          <div class="req-card-top">
             <div class="chariot-avatar">${initials}</div>
-            <div class="request-rider-info">
-              <div class="request-rider-name">${rider.name ?? 'Rider'}</div>
-              <div class="request-rider-time">${Chariot.Util.timeAgo(req.created_at)}</div>
+            <div class="req-rider-info">
+              <div class="req-rider-name">${rider.name ?? 'Rider'}</div>
+              <div class="req-rider-time">${Chariot.Util.timeAgo(req.created_at)}</div>
             </div>
             <span class="badge-chariot pending">Pending</span>
           </div>
           ${req.pickup_note ? `
-          <div class="request-note">
+          <div class="req-note">
             <i class="fa-solid fa-quote-left"></i>
             <span>${req.pickup_note}</span>
           </div>` : ''}
-          <div class="request-actions">
-            <button class="btn-accept btn-chariot" data-request-id="${req.id}">
+          <div class="req-actions">
+            <button class="btn-accept btn-chariot btn-success-c" data-request-id="${req.id}">
               <i class="fa-solid fa-circle-check"></i> Accept
             </button>
-            <button class="btn-decline btn-chariot" data-request-id="${req.id}">
+            <button class="btn-decline btn-chariot btn-danger-c" data-request-id="${req.id}">
               <i class="fa-solid fa-circle-xmark"></i> Decline
             </button>
           </div>
@@ -2371,8 +2502,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ── Role-specific inits ── */
   if (role === 'rider') {
-    /* Auto-load nearby rides on find-ride page */
-    if ($('#rideListContainer')) {
+    /* Auto-load nearby rides on find-ride page.
+       NOTE: find-ride.blade.php also calls findRides() in its own DOMContentLoaded,
+       but that inline script runs AFTER chariot.js (which is loaded before @stack('scripts')).
+       We guard with a flag to prevent a double-call. */
+    if ($('#rideListContainer') && !Chariot.Rider._findRidesAutoStarted) {
+      Chariot.Rider._findRidesAutoStarted = true;
       Chariot.Rider.findRides();
 
       /* Zone selects trigger re-search */

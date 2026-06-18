@@ -114,8 +114,8 @@
           </a>
         </li>
         <li>
-          <a href="{{ route('rider.profile') }}"
-             class="sidebar-nav-item {{ request()->routeIs('rider.profile') ? 'is-active' : '' }}">
+          <a href="{{ route('driver.profile') }}"
+             class="sidebar-nav-item {{ request()->routeIs('driver.profile') ? 'is-active' : '' }}">
             <i class="fa-solid fa-user"></i> Profile
           </a>
         </li>
@@ -182,7 +182,7 @@
             <div class="user-role">{{ ucfirst(auth()->user()->role) }}</div>
           </li>
           <li>
-            <a class="dropdown-item" href="{{ route('rider.profile') }}">
+            <a class="dropdown-item" href="{{ auth()->user()->role === 'driver' ? route('driver.profile') : route('rider.profile') }}">
               <i class="fa-solid fa-user"></i> Profile
             </a>
           </li>
@@ -296,8 +296,8 @@
         <i class="fa-solid fa-clock-rotate-left"></i>
         <span>History</span>
       </a>
-      <a href="{{ route('rider.profile') }}"
-         class="bottom-nav-item {{ request()->routeIs('rider.profile') ? 'is-active' : '' }}">
+      <a href="{{ route('driver.profile') }}"
+         class="bottom-nav-item {{ request()->routeIs('driver.profile') ? 'is-active' : '' }}">
         <i class="fa-solid fa-user"></i>
         <span>Profile</span>
       </a>
