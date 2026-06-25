@@ -32,6 +32,10 @@ class SendOtpEmail implements ShouldQueue
             return;
         }
 
-        Mail::to($email)->send(new OtpMail($this->user, $this->otp));
+        try {
+            Mail::to($email)->send(new OtpMail($this->user, $this->otp));
+        } catch (\Exception $e) {
+            logger()->error("Failed to send verification OTP email to {$email}: " . $e->getMessage());
+        }
     }
 }

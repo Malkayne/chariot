@@ -1097,9 +1097,9 @@ Chariot.Map = {
     );
 
     this.tileLayers.dark = L.tileLayer(
-      'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       {
-        attribution: '© <a href="https://stadiamaps.com">Stadia Maps</a>',
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
         maxZoom: 20,
       }
     );
@@ -1868,11 +1868,17 @@ Chariot.Rider = {
     const ride = this.rides.find(r => r.driver?.id === driverId);
     if (!ride) return;
     const card = $(`.ride-card[data-ride-id="${ride.id}"]`);
-    $('#bottomSheet')?.classList.remove('is-collapsed');
     if (card) {
+      const listBtn = $('.view-toggle-btn[data-view="list"]');
+      if (listBtn) {
+        listBtn.click();
+      }
+      $('#bottomSheet')?.classList.remove('is-collapsed');
       Chariot.Util.scrollTo(card, 120);
       card.classList.add('is-new');
       card.addEventListener('animationend', () => card.classList.remove('is-new'), { once: true });
+    } else {
+      window.location.href = `/rider/find-ride?ride_id=${ride.id}`;
     }
   },
 };
@@ -1977,11 +1983,28 @@ Chariot.Driver = {
       if (!Chariot.Forms.validateForm(form)) return;
 
       const btn  = form.querySelector('[type="submit"]');
+      const departingAtValue = $('#departingAt', form).value?.trim();
+      let departingAt = null;
+      if (departingAtValue) {
+        if (/^\d{2}:\d{2}$/.test(departingAtValue)) {
+          const [hour, minute] = departingAtValue.split(':').map(Number);
+          const now = new Date();
+          const departure = new Date(now);
+          departure.setHours(hour, minute, 0, 0);
+          if (departure <= now) {
+            departure.setDate(departure.getDate() + 1);
+          }
+          departingAt = departure.toISOString();
+        } else {
+          departingAt = departingAtValue;
+        }
+      }
+
       const body = {
         from_zone_id:   parseInt($('#fromZone', form).value),
         to_zone_id:     parseInt($('#toZone', form).value),
         available_seats: parseInt($('#rideSeats', form).value),
-        departing_at:   $('#departingAt', form).value || null,
+        departing_at:   departingAt,
         notes:          $('#rideNotes', form).value?.trim() || null,
       };
 
@@ -2245,7 +2268,6 @@ Chariot.Admin = {
 
   init() {
     this._initUserSearch();
-    this._initUserActions();
     this._initLiveRefresh();
   },
 

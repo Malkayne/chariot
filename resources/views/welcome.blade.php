@@ -111,7 +111,10 @@
     .landing-nav-brand img {
       width: 34px;
       height: 34px;
-      filter: drop-shadow(0 2px 6px rgba(201,162,39,0.4));
+      background: white;
+      padding: 4px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .landing-nav-brand-name {
@@ -245,6 +248,9 @@
       margin: 0 auto;
       filter: drop-shadow(0 8px 40px rgba(201,162,39,0.45));
       transition: filter 0.3s;
+      background: white;
+      padding: 8px;
+      border-radius: 16px;
     }
 
     .hero-logo:hover {
@@ -895,7 +901,14 @@
       gap: var(--sp-3);
     }
 
-    .footer-brand img { width: 28px; height: 28px; }
+    .footer-brand img {
+      width: 28px;
+      height: 28px;
+      background: white;
+      padding: 3px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
 
     .footer-brand-name {
       font-family: var(--font-display);

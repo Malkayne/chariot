@@ -73,6 +73,8 @@ Route::middleware(['auth', 'is.admin'])
         Route::get('/rides',                 [AdminController::class, 'rides'])->name('rides');
         Route::get('/zones',                 [AdminController::class, 'zones'])->name('zones');
         Route::post('/zones',                [AdminController::class, 'storeZone'])->name('zones.store');
+        Route::put('/zones/{zone}',          [AdminController::class, 'updateZone'])->name('zones.update');
+        Route::delete('/zones/{zone}',       [AdminController::class, 'deleteZone'])->name('zones.delete');
         Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
         Route::patch('/users/{user}/verify', [AdminController::class, 'verifyUser'])->name('users.verify');
         Route::patch('/users/{user}/role',   [AdminController::class, 'changeRole'])->name('users.role');

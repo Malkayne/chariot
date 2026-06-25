@@ -21,7 +21,7 @@ class OtpService
             'otp_expires_at' => now()->addMinutes(10),
         ]);
 
-        SendOtpEmail::dispatch($user, $otp);
+        SendOtpEmail::dispatchSync($user, $otp);
     }
 
     /**

@@ -23,7 +23,7 @@ class AdminSeeder extends Seeder
             ]
         );
 
-        $this->command->info("Admin account ready: phone=08000000001 / password=admin1234");
+        $this->command->info("Admin account ready: email=admin@chariot.camp / password=admin1234");
 
         // Create a test rider
         User::firstOrCreate(

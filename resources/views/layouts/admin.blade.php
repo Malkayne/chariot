@@ -1,14 +1,26 @@
+<!-- ===================================================================
+  [A]  layouts/admin.blade.php
+  ====================================================================
+  Cut everything between the [A] markers into:
+      resources/views/layouts/admin.blade.php
+  ================================================================== -->
+<!-- ======================== [A] START ============================= -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>@yield('title', 'Admin') — Chariot Admin</title>
+  <meta name="csrf-token"  content="{{ csrf_token() }}">
+  <meta name="api-token"   content="{{ auth()->user()->createToken('admin-session')->plainTextToken }}">
+  <meta name="user-id"     content="{{ auth()->id() }}">
+  <meta name="user-role"   content="admin">
+
+  <title>Admin — @yield('title', 'Dashboard') | Chariot</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
   <!-- Bootstrap 5 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css">
@@ -16,213 +28,385 @@
   <!-- Font Awesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+  <!--
+    Leaflet — only on admin/zones.blade.php (map preview).
+    Injected via @stack('map-css').
+  -->
+  @stack('map-css')
+
+  <!-- Chariot global CSS -->
+  <link rel="stylesheet" href="{{ asset('css/chariot.css') }}">
+
+  <!-- Admin layout overrides -->
   <style>
-    :root {
-      --forest: #0D3B1F;
-      --gold: #C9A227;
-      --off-white: #F5F0E8;
-      --dark: #0A0A0A;
-      --sidebar-w: 260px;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'DM Sans', sans-serif; background: #f4f6f9; color: #333; }
+    /* ════════════════════════════════════════════
+       ADMIN LAYOUT SHELL
+       Wider sidebar (260px), no bottom-nav,
+       full-width content area up to 1280px
+       ════════════════════════════════════════════ */
 
-    /* Sidebar */
-    .admin-sidebar {
-      position: fixed; top: 0; left: 0; height: 100vh; width: var(--sidebar-w);
-      background: var(--forest); display: flex; flex-direction: column;
-      z-index: 100; overflow-y: auto;
+    /* Admin sidebar is 260px wide */
+    .chariot-sidebar { width: 260px; }
+
+    @media (min-width: 768px) {
+      .chariot-content { margin-left: 260px; }
     }
-    .admin-sidebar-brand {
-      padding: 24px 20px; border-bottom: 1px solid rgba(201,162,39,.2);
-      text-decoration: none; display: flex; align-items: center; gap: 12px;
+
+    /* Admin content stretches wider */
+    .chariot-content-inner {
+      max-width: 1280px;
+      padding: var(--sp-6) var(--sp-5);
     }
-    .admin-brand-icon {
-      width: 40px; height: 40px; background: var(--gold); border-radius: 10px;
+
+    @media (min-width: 1400px) {
+      .chariot-content-inner { padding: var(--sp-8); }
+    }
+
+    /* No bottom-nav space needed */
+    .chariot-content { padding-bottom: var(--sp-10); }
+
+    /* ── ADMIN SIDEBAR extras ── */
+    .admin-sidebar-section {
+      padding: var(--sp-5) var(--sp-5) var(--sp-1);
+      font-size: 10px;
+      font-weight: var(--fw-bold);
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.18);
+    }
+
+    /* ── ADMIN TOPBAR ── */
+    /* Breadcrumb row inside content area */
+    .admin-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      margin-bottom: var(--sp-5);
+    }
+
+    .admin-breadcrumb a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .admin-breadcrumb a:hover { color: var(--clr-gold-mid); }
+
+    .admin-breadcrumb-sep { color: var(--border-color); }
+
+    .admin-breadcrumb-current {
+      color: var(--text-primary);
+      font-weight: var(--fw-medium);
+    }
+
+    /* ── ADMIN PAGE HEADER ── */
+    .admin-page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+      flex-wrap: wrap;
+    }
+
+    .admin-page-title {
+      font-size: var(--text-2xl);
+      font-weight: var(--fw-bold);
+      color: var(--text-primary);
+      letter-spacing: var(--ls-tight);
+      margin-bottom: var(--sp-1);
+    }
+
+    .admin-page-sub {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+    }
+
+    /* ── CONFIRM MODAL (shared) ── */
+    .confirm-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 9000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      backdrop-filter: blur(4px);
+    }
+
+    .confirm-modal-backdrop.is-open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .confirm-modal {
+      background: var(--bg-card);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-color);
+      padding: var(--sp-6);
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--shadow-xl);
+      transform: scale(0.92);
+      transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .confirm-modal-backdrop.is-open .confirm-modal {
+      transform: scale(1);
+    }
+
+    .confirm-modal-icon {
+      width: 52px; height: 52px;
+      border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; color: var(--forest); font-weight: 900;
+      font-size: 1.4rem;
+      margin-bottom: var(--sp-4);
     }
-    .admin-brand-name { color: var(--gold); font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; }
-    .admin-brand-sub  { color: rgba(245,240,232,.5); font-size: 11px; margin-top: 2px; }
 
-    .admin-nav { padding: 16px 0; flex: 1; }
-    .admin-nav-label {
-      color: rgba(201,162,39,.5); font-size: 10px; text-transform: uppercase;
-      letter-spacing: 1.5px; padding: 12px 20px 4px;
+    .confirm-modal-icon.warn  { background: var(--clr-warning-tint); color: var(--clr-warning); }
+    .confirm-modal-icon.danger { background: var(--clr-danger-tint);  color: var(--clr-danger); }
+    .confirm-modal-icon.success{ background: var(--clr-success-tint); color: var(--clr-success); }
+
+    .confirm-modal-title {
+      font-size: var(--text-lg);
+      font-weight: var(--fw-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--sp-2);
     }
-    .admin-nav-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 11px 20px; color: rgba(245,240,232,.75); text-decoration: none;
-      font-size: 14px; font-weight: 500; transition: all .15s;
-      border-left: 3px solid transparent;
+
+    .confirm-modal-body {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: var(--lh-relaxed);
+      margin-bottom: var(--sp-5);
     }
-    .admin-nav-item:hover { background: rgba(201,162,39,.08); color: var(--off-white); }
-    .admin-nav-item.active { background: rgba(201,162,39,.12); color: var(--gold); border-left-color: var(--gold); }
-    .admin-nav-item i { width: 18px; text-align: center; font-size: 15px; }
 
-    .admin-sidebar-footer {
-      padding: 16px 20px; border-top: 1px solid rgba(201,162,39,.2);
-    }
-    .admin-user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .admin-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: var(--gold); color: var(--forest);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 13px;
-    }
-    .admin-user-name { color: var(--off-white); font-size: 13px; font-weight: 600; }
-    .admin-user-role { color: rgba(245,240,232,.5); font-size: 11px; }
-    .admin-logout-btn {
-      width: 100%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
-      color: rgba(245,240,232,.7); padding: 8px 12px; border-radius: 8px;
-      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
-      transition: all .15s;
-    }
-    .admin-logout-btn:hover { background: rgba(255,0,0,.15); color: #ff6b6b; border-color: rgba(255,0,0,.2); }
-
-    /* Main content */
-    .admin-main { margin-left: var(--sidebar-w); min-height: 100vh; }
-
-    .admin-topbar {
-      background: #fff; padding: 16px 32px; border-bottom: 1px solid #e8ecf0;
-      display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 50;
-    }
-    .admin-topbar-title { font-size: 18px; font-weight: 700; color: var(--forest); }
-    .admin-topbar-right { display: flex; align-items: center; gap: 12px; }
-
-    .admin-content { padding: 28px 32px; }
-
-    /* Cards */
-    .stat-card {
-      background: #fff; border-radius: 14px; padding: 24px;
-      border: 1px solid #edf0f3; transition: box-shadow .2s;
-    }
-    .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.06); }
-    .stat-icon {
-      width: 48px; height: 48px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center; font-size: 20px;
-    }
-    .stat-value { font-size: 32px; font-weight: 700; color: var(--forest); line-height: 1; margin: 8px 0 4px; }
-    .stat-label { font-size: 13px; color: #888; font-weight: 500; }
-
-    /* Tables */
-    .admin-table-card { background: #fff; border-radius: 14px; border: 1px solid #edf0f3; overflow: hidden; }
-    .admin-table-header { padding: 20px 24px; border-bottom: 1px solid #f0f2f5; display: flex; align-items: center; justify-content: space-between; }
-    .admin-table-title { font-size: 16px; font-weight: 700; color: var(--forest); }
-    table.chariot-table { width: 100%; border-collapse: collapse; }
-    table.chariot-table th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #f0f2f5; }
-    table.chariot-table td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #f8f9fb; vertical-align: middle; }
-    table.chariot-table tr:last-child td { border-bottom: none; }
-    table.chariot-table tr:hover td { background: #fcfcfd; }
-
-    /* Badges */
-    .badge-role { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge-rider  { background: #e8f4fd; color: #1a7fd4; }
-    .badge-driver { background: #eaf7f0; color: #18a15f; }
-    .badge-admin  { background: #fef5e7; color: #d4820a; }
-
-    /* Alerts */
-    .flash-alert { border-radius: 10px; font-size: 14px; }
-
-    @media (max-width: 768px) {
-      .admin-sidebar { width: 220px; transform: translateX(-100%); transition: transform .3s; }
-      .admin-sidebar.open { transform: translateX(0); }
-      .admin-main { margin-left: 0; }
-      .admin-content { padding: 20px 16px; }
+    .confirm-modal-actions {
+      display: flex;
+      gap: var(--sp-3);
     }
   </style>
+
+  <!-- Per-page styles -->
   @stack('styles')
 </head>
-<body>
 
-  <!-- SIDEBAR -->
-  <aside class="admin-sidebar" id="adminSidebar">
-    <a href="{{ route('admin.dashboard') }}" class="admin-sidebar-brand">
-      <div class="admin-brand-icon">C</div>
+<body
+  data-flash-success="{{ session('success') }}"
+  data-flash-error="{{ session('error') }}"
+>
+
+  <!-- ── SIDEBAR OVERLAY (mobile) ── -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ADMIN SIDEBAR
+       ══════════════════════════════════════════════════════════ -->
+  <aside class="chariot-sidebar admin-sidebar" id="chariotSidebar">
+
+    <a href="{{ route('admin.dashboard') }}" class="sidebar-brand">
+      <img src="{{ asset('images/chariot-logo.png') }}" alt="Chariot" width="36" height="36">
       <div>
-        <div class="admin-brand-name">CHARIOT</div>
-        <div class="admin-brand-sub">Admin Panel</div>
+        <div class="sidebar-brand-text">CHARIOT</div>
+        <div class="sidebar-brand-tagline">Admin Panel</div>
       </div>
     </a>
 
-    <nav class="admin-nav">
-      <div class="admin-nav-label">Overview</div>
-      <a href="{{ route('admin.dashboard') }}"
-         class="admin-nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-        <i class="fa-solid fa-chart-pie"></i> Dashboard
-      </a>
+    <ul class="sidebar-nav" role="navigation">
 
-      <div class="admin-nav-label">Management</div>
-      <a href="{{ route('admin.users') }}"
-         class="admin-nav-item {{ request()->routeIs('admin.users') ? 'active' : '' }}">
-        <i class="fa-solid fa-users"></i> Users
-      </a>
-      <a href="{{ route('admin.rides') }}"
-         class="admin-nav-item {{ request()->routeIs('admin.rides') ? 'active' : '' }}">
-        <i class="fa-solid fa-car-side"></i> Rides
-      </a>
-      <a href="{{ route('admin.zones') }}"
-         class="admin-nav-item {{ request()->routeIs('admin.zones') ? 'active' : '' }}">
-        <i class="fa-solid fa-map-pin"></i> Zones
-      </a>
+      <li class="admin-sidebar-section">Overview</li>
 
-      <div class="admin-nav-label">Platform</div>
-      <a href="{{ route('rider.home') }}" class="admin-nav-item" target="_blank">
-        <i class="fa-solid fa-arrow-up-right-from-square"></i> View App
-      </a>
-    </nav>
+      <li>
+        <a href="{{ route('admin.dashboard') }}"
+           class="sidebar-nav-item {{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">
+          <i class="fa-solid fa-gauge-high"></i> Dashboard
+        </a>
+      </li>
 
-    <div class="admin-sidebar-footer">
-      <div class="admin-user-info">
-        <div class="admin-avatar">{{ auth()->user()->avatarInitials() }}</div>
+      <li class="admin-sidebar-section">Management</li>
+
+      <li>
+        <a href="{{ route('admin.users') }}"
+           class="sidebar-nav-item {{ request()->routeIs('admin.users') ? 'is-active' : '' }}">
+          <i class="fa-solid fa-users"></i> Users
+          @php $pendingVerify = \App\Models\User::where('is_verified', false)->count(); @endphp
+          @if($pendingVerify > 0)
+            <span class="sidebar-badge">{{ $pendingVerify }}</span>
+          @endif
+        </a>
+      </li>
+
+      <li>
+        <a href="{{ route('admin.rides') }}"
+           class="sidebar-nav-item {{ request()->routeIs('admin.rides') ? 'is-active' : '' }}">
+          <i class="fa-solid fa-car"></i> Rides
+        </a>
+      </li>
+
+      <li>
+        <a href="{{ route('admin.zones') }}"
+           class="sidebar-nav-item {{ request()->routeIs('admin.zones') ? 'is-active' : '' }}">
+          <i class="fa-solid fa-map-pin"></i> Zones
+        </a>
+      </li>
+
+    </ul>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="chariot-avatar avatar-sm">
+          {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+        </div>
         <div>
-          <div class="admin-user-name">{{ auth()->user()->name }}</div>
-          <div class="admin-user-role">Administrator</div>
+          <div class="sidebar-user-name">{{ auth()->user()->name }}</div>
+          <div class="sidebar-user-role">Administrator</div>
         </div>
       </div>
       <form action="{{ route('logout') }}" method="POST">
         @csrf
-        <button type="submit" class="admin-logout-btn">
-          <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+        <button type="submit" class="sidebar-logout">
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
         </button>
       </form>
     </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
-  <div class="admin-main">
-    <div class="admin-topbar">
-      <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-sm btn-light d-md-none" onclick="document.getElementById('adminSidebar').classList.toggle('open')">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="admin-topbar-title">@yield('page-title', 'Dashboard')</div>
-      </div>
-      <div class="admin-topbar-right">
-        <span class="text-muted" style="font-size:13px;">
-          <i class="fa-regular fa-clock me-1"></i>{{ now()->format('D, d M Y') }}
-        </span>
-      </div>
+  <!-- ══════════════════════════════════════════════════════════
+       TOP NAVBAR
+       ══════════════════════════════════════════════════════════ -->
+  <nav class="chariot-navbar" id="mainNav" role="navigation">
+    <div class="navbar-left">
+      <button class="navbar-toggle" id="sidebarToggle" aria-label="Open menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <a href="{{ route('admin.dashboard') }}" class="navbar-brand-link">
+        <img src="{{ asset('images/chariot-logo.png') }}" alt="Chariot" width="30" height="30">
+        <span class="navbar-brand-name d-none d-sm-inline">CHARIOT</span>
+      </a>
+      <!-- Admin badge in navbar -->
+      <span style="
+        font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+        background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.3);
+        color:var(--clr-gold-mid);border-radius:var(--radius-pill);
+        padding:2px 8px;flex-shrink:0;
+      ">ADMIN</span>
     </div>
 
-    <div class="admin-content">
-      {{-- Flash Messages --}}
-      @foreach(['success' => 'success', 'error' => 'danger', 'info' => 'info', 'warning' => 'warning'] as $type => $class)
-        @if(session($type))
-          <div class="alert alert-{{ $class }} alert-dismissible flash-alert mb-4" role="alert">
-            {{ session($type) }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        @endif
-      @endforeach
+    <div class="navbar-right">
+      <!-- Theme toggle -->
+      <button class="navbar-icon-btn" id="themeToggle" aria-label="Toggle theme">
+        <i class="fa-solid fa-moon fs-6" id="themeIcon"></i>
+      </button>
+      <!-- Avatar dropdown -->
+      <div class="dropdown">
+        <div class="chariot-avatar navbar-avatar"
+             data-bs-toggle="dropdown" role="button" tabindex="0">
+          {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+        </div>
+        <ul class="dropdown-menu dropdown-menu-end chariot-dropdown mt-2">
+          <li class="dropdown-header">
+            <div class="user-name">{{ auth()->user()->name }}</div>
+            <div class="user-role">Administrator</div>
+          </li>
+          <li><hr class="dropdown-divider m-1"></li>
+          <li>
+            <form action="{{ route('logout') }}" method="POST">
+              @csrf
+              <button type="submit" class="dropdown-item text-danger">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
-      @yield('content')
+  <!-- ── TOAST CONTAINER ── -->
+  <div class="toast-container-c" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ── SHARED CONFIRM MODAL ── -->
+  <div class="confirm-modal-backdrop" id="confirmModalBackdrop">
+    <div class="confirm-modal">
+      <div class="confirm-modal-icon warn" id="confirmModalIcon">
+        <i class="fa-solid fa-triangle-exclamation" id="confirmModalIconEl"></i>
+      </div>
+      <div class="confirm-modal-title" id="confirmModalTitle">Are you sure?</div>
+      <div class="confirm-modal-body"  id="confirmModalBody">This action cannot be undone.</div>
+      <div class="confirm-modal-actions">
+        <button class="btn-chariot btn-ghost-c flex-1" id="confirmModalCancel">Cancel</button>
+        <button class="btn-chariot btn-danger-c flex-1" id="confirmModalOk">Confirm</button>
+      </div>
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
+  <!-- ── MAIN CONTENT ── -->
+  <main class="chariot-content" id="mainContent" role="main">
+    <div class="chariot-content-inner">
+      @yield('content')
+    </div>
+  </main>
+
+  <!-- Bootstrap 5 JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Leaflet (zones page only) -->
+  @stack('map-js')
+
+  <!-- Chariot global JS -->
+  <script src="{{ asset('js/chariot.js') }}"></script>
+
+  <!-- Shared admin confirm-modal helper -->
+  <script>
+    /* ── Global confirm modal helper ── */
+    /* Usage: AdminConfirm.show({ title, body, iconType, onOk }) */
+    window.AdminConfirm = {
+      _resolve: null,
+      show({ title = 'Are you sure?', body = '', iconType = 'warn', okLabel = 'Confirm', okClass = 'btn-danger-c', onOk } = {}) {
+        const backdrop = document.getElementById('confirmModalBackdrop');
+        const iconEl   = document.getElementById('confirmModalIcon');
+        const iconI    = document.getElementById('confirmModalIconEl');
+        const titleEl  = document.getElementById('confirmModalTitle');
+        const bodyEl   = document.getElementById('confirmModalBody');
+        const okBtn    = document.getElementById('confirmModalOk');
+
+        const iconMap = {
+          warn:    { cls: 'warn',    icon: 'fa-triangle-exclamation' },
+          danger:  { cls: 'danger',  icon: 'fa-circle-xmark' },
+          success: { cls: 'success', icon: 'fa-circle-check' },
+        };
+
+        const t = iconMap[iconType] || iconMap.warn;
+        iconEl.className      = `confirm-modal-icon ${t.cls}`;
+        iconI.className       = `fa-solid ${t.icon}`;
+        titleEl.textContent   = title;
+        bodyEl.textContent    = body;
+        okBtn.textContent     = okLabel;
+        okBtn.className       = `btn-chariot ${okClass} flex-1`;
+
+        backdrop.classList.add('is-open');
+        Chariot.Util.lockScroll();
+
+        const close = () => {
+          backdrop.classList.remove('is-open');
+          Chariot.Util.unlockScroll();
+        };
+
+        document.getElementById('confirmModalCancel').onclick = close;
+        backdrop.onclick = (e) => { if (e.target === backdrop) close(); };
+        okBtn.onclick = () => { close(); onOk?.(); };
+      }
+    };
+  </script>
+
+  <!-- Per-page scripts -->
   @stack('scripts')
+
 </body>
 </html>
+<!-- ========================= [A] END ============================== -->

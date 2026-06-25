@@ -514,6 +514,9 @@ h6 { font-size: var(--text-base); }
   height: 36px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+  background: white;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-brand-text {
@@ -764,6 +767,9 @@ h6 { font-size: var(--text-base); }
   height: 30px;
   flex-shrink: 0;
   border-radius: var(--radius-xs);
+  background: white;
+  padding: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .navbar-brand-name {
@@ -3711,6 +3717,9 @@ textarea.input-chariot {
   margin: 0 auto var(--sp-5);
   animation: fadeUp 0.7s ease both;
   filter: drop-shadow(0 8px 32px rgba(201,162,39,0.35));
+  background: white;
+  padding: 8px;
+  border-radius: 16px;
 }
 
 .hero-title {

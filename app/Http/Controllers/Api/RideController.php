@@ -11,8 +11,10 @@ use App\Models\Ride;
 use App\Models\RideRequest;
 use App\Models\Zone;
 use App\Services\LocationService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class RideController extends Controller
 {
@@ -22,33 +24,42 @@ class RideController extends Controller
 
     public function create(Request $request): JsonResponse
     {
-        $request->validate([
+        $input = $request->all();
+        if (! empty($input['departing_at']) && preg_match('/^\d{2}:\d{2}$/', $input['departing_at'])) {
+            $departingAt = Carbon::createFromFormat('H:i', $input['departing_at'], config('app.timezone'));
+            if ($departingAt->lte(now())) {
+                $departingAt->addDay();
+            }
+            $input['departing_at'] = $departingAt->toDateTimeString();
+        }
+
+        $validator = Validator::make($input, [
             'from_zone_id'    => ['required', 'exists:zones,id'],
             'to_zone_id'      => ['required', 'exists:zones,id', 'different:from_zone_id'],
             'available_seats' => ['required', 'integer', 'min:1', 'max:30'],
-            'departing_at'    => ['nullable', 'date'],
+            'departing_at'    => ['nullable', 'date', 'after:now'],
             'notes'           => ['nullable', 'string', 'max:500'],
             'pickup_lat'      => ['nullable', 'numeric'],
             'pickup_lng'      => ['nullable', 'numeric'],
         ]);
 
-        $user = $request->user();
+        $validator->validate();
 
-        // Cancel any existing active ride first
+        $user = $request->user();
         Ride::where('driver_id', $user->id)
             ->whereIn('status', ['active', 'full'])
             ->update(['status' => 'cancelled']);
 
         $ride = Ride::create([
             'driver_id'       => $user->id,
-            'from_zone_id'    => $request->from_zone_id,
-            'to_zone_id'      => $request->to_zone_id,
-            'total_seats'     => $request->available_seats,
-            'available_seats' => $request->available_seats,
-            'pickup_lat'      => $request->pickup_lat ?? $user->driverProfile?->current_lat,
-            'pickup_lng'      => $request->pickup_lng ?? $user->driverProfile?->current_lng,
-            'departing_at'    => $request->departing_at,
-            'notes'           => $request->notes,
+            'from_zone_id'    => $input['from_zone_id'],
+            'to_zone_id'      => $input['to_zone_id'],
+            'total_seats'     => $input['available_seats'],
+            'available_seats' => $input['available_seats'],
+            'pickup_lat'      => $input['pickup_lat'] ?? $user->driverProfile?->current_lat,
+            'pickup_lng'      => $input['pickup_lng'] ?? $user->driverProfile?->current_lng,
+            'departing_at'    => $input['departing_at'] ?? null,
+            'notes'           => $input['notes'] ?? null,
             'status'          => 'active',
         ]);
 
@@ -252,8 +263,8 @@ class RideController extends Controller
             'pickup_note' => $request->pickup_note,
         ]);
 
-        // Notify driver (queued)
-        NotifyDriverOfRequest::dispatch($rideRequest);
+        // Notify driver (synchronously to ensure instant delivery)
+        NotifyDriverOfRequest::dispatchSync($rideRequest);
 
         // Broadcast to driver in real-time
         broadcast(new RideRequested($rideRequest))->toOthers();

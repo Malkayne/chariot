@@ -53,12 +53,23 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .auth-logo { text-align: center; margin-bottom: var(--sp-6); }
+    .auth-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      justify-content: center;
+      margin-bottom: var(--sp-6);
+    }
 
     .auth-logo img {
-      width: 72px; height: 72px;
+      width: 72px;
+      height: 72px;
       margin-bottom: var(--sp-4);
       filter: drop-shadow(0 4px 20px rgba(201,162,39,0.4));
+      background: white;
+      padding: 6px;
+      border-radius: 12px;
     }
 
     .auth-logo-title {
@@ -70,8 +81,12 @@
       margin-bottom: var(--sp-1);
     }
 
-    .auth-logo-subtitle { font-size: var(--text-sm); color: rgba(255,255,255,0.5); letter-spacing: var(--ls-wide); }
-
+    .auth-logo-subtitle {
+      font-size: var(--text-sm);
+      color: rgba(255,255,255,0.5);
+      letter-spacing: var(--ls-wide);
+    }
+    
     .auth-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);

@@ -54,14 +54,22 @@
     }
 
     .auth-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       text-align: center;
+      justify-content: center;
       margin-bottom: var(--sp-6);
     }
 
     .auth-logo img {
-      width: 72px; height: 72px;
+      width: 72px;
+      height: 72px;
       margin-bottom: var(--sp-4);
       filter: drop-shadow(0 4px 20px rgba(201,162,39,0.4));
+      background: white;
+      padding: 6px;
+      border-radius: 12px;
     }
 
     .auth-logo-title {

@@ -404,10 +404,20 @@ document.addEventListener('DOMContentLoaded', function () {
      chariot.js global init also triggers findRides() for riders on
      pages with #rideListContainer and guards with _findRidesAutoStarted.
      We set the flag here too and trigger manually so both can't double-fire. */
-  if (!Chariot.Rider._findRidesAutoStarted) {
-    Chariot.Rider._findRidesAutoStarted = true;
-    Chariot.Rider.findRides();
-  }
+  const initFindRides = async () => {
+    if (!Chariot.Rider._findRidesAutoStarted) {
+      Chariot.Rider._findRidesAutoStarted = true;
+      await Chariot.Rider.findRides();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetRideId = urlParams.get('ride_id');
+      if (targetRideId) {
+        // Open the modal for the requested ride
+        openRequestModal(targetRideId);
+      }
+    }
+  };
+  initFindRides();
 
   /* Zone changes + button re-trigger search */
   document.getElementById('toZoneSelect')?.addEventListener('change',
@@ -539,23 +549,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
   /* ── 5. OVERRIDE Rider._buildRideCard to use modal instead of prompt ── */
-  /* We patch the request button onclick in the rendered cards. */
-  const patchCards = () => {
-    document.querySelectorAll('.btn-request-ride[data-ride-id]').forEach(btn => {
-      /* Remove the old listener set by chariot.js and add our modal opener */
-      const rideId = btn.dataset.rideId;
-      const clone  = btn.cloneNode(true);
-      btn.parentNode.replaceChild(clone, btn);
-      clone.addEventListener('click', () => openRequestModal(rideId));
-    });
-  };
-
-  /* Watch #rideListContainer for DOM changes (chariot.js re-renders it) */
-  const observer = new MutationObserver(patchCards);
-  const listContainer = document.getElementById('rideListContainer');
-  if (listContainer) {
-    observer.observe(listContainer, { childList: true, subtree: true });
-  }
+  /* No MutationObserver is needed here. chariot.js automatically delegates 
+     to window.openRequestModal if defined. We just log the custom modal registration. */
+  console.log('[Chariot] Custom request modal registered.');
 
 });
 </script>

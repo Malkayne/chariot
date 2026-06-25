@@ -19,14 +19,14 @@ class LoginController extends Controller
     public function authenticate(Request $request): RedirectResponse
     {
         $request->validate([
-            'phone'    => ['required', 'string'],
+            'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
 
-        // Attempt login with phone as the identifier
-        if (! Auth::attempt(['phone' => $request->phone, 'password' => $request->password], $request->boolean('remember'))) {
+        // Attempt login with email as the identifier
+        if (! Auth::attempt(['email' => $request->email, 'password' => $request->password], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
-                'phone' => 'The phone number or password is incorrect.',
+                'email' => 'The email address or password is incorrect.',
             ]);
         }
 

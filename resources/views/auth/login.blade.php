@@ -67,6 +67,9 @@
       height: 72px;
       margin-bottom: var(--sp-4);
       filter: drop-shadow(0 4px 20px rgba(201,162,39,0.4));
+      background: white;
+      padding: 6px;
+      border-radius: 12px;
     }
 
     .auth-logo-title {
@@ -353,23 +356,23 @@
       >
         @csrf
 
-        {{-- Phone --}}
+        {{-- Email --}}
         <div class="form-group-c">
-          <label class="form-label-c" for="phone">
-            <i class="fa-solid fa-phone" style="color:var(--clr-gold-mid)"></i>
-            Phone Number
+          <label class="form-label-c" for="email">
+            <i class="fa-solid fa-envelope" style="color:var(--clr-gold-mid)"></i>
+            Email Address
           </label>
           <input
-            type="tel"
-            id="phone"
-            name="phone"
-            class="input-chariot @error('phone') is-invalid @enderror"
-            placeholder="e.g. 08012345678"
-            value="{{ old('phone') }}"
+            type="email"
+            id="email"
+            name="email"
+            class="input-chariot @error('email') is-invalid @enderror"
+            placeholder="e.g. user@example.com"
+            value="{{ old('email') }}"
             required
             autofocus
           >
-          @error('phone')
+          @error('email')
             <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i>{{ $message }}</div>
           @enderror
         </div>
@@ -404,7 +407,7 @@
             <input type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
             <span>Remember me</span>
           </label>
-          <a href="#" class="forgot-password">Forgot password?</a>
+          <!-- <a href="#" class="forgot-password">Forgot password?</a> -->
         </div>
 
         {{-- Submit Button --}}

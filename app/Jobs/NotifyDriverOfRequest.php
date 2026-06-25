@@ -35,5 +35,14 @@ class NotifyDriverOfRequest implements ShouldQueue
                 'rider_name' => $rider->name,
             ],
         ]);
+
+        // Send email alert to driver
+        if ($driver->email) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($driver->email)->send(new \App\Mail\RideRequestMail($this->rideRequest));
+            } catch (\Exception $e) {
+                logger()->error("Failed to send ride request email to driver {$driver->email}: " . $e->getMessage());
+            }
+        }
     }
 }
