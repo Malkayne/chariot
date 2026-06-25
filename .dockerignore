@@ -12,7 +12,4 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
-Dockerfile
-docker-entrypoint.sh
-000-default.conf
 RENDER_DEPLOYMENT.md
