@@ -492,7 +492,7 @@
       </div>
       <div class="empty-state-title mb-2">No active ride</div>
       <p class="empty-state-text mb-4">
-        Go available and post a ride on the dashboard to start receiving requests.
+        Go online and post a ride on the dashboard to start receiving requests.
       </p>
       <a href="{{ route('driver.dashboard') }}" class="btn-chariot btn-primary-c">
         <i class="fa-solid fa-gauge-high"></i>

@@ -1921,23 +1921,55 @@ Chariot.Driver = {
   },
 
   async toggleAvailability(btn) {
-    Chariot.Buttons.setLoading(btn, true);
+    const currentIsAvailable = this.isAvailable;
+    const nextIsAvailable = !currentIsAvailable;
+    const nextStatus = nextIsAvailable ? 'available' : 'offline';
+
+    // Disable button to prevent spam clicks during API request
+    if (btn) btn.disabled = true;
+
+    // Optimistically update status and UI instantly
+    this.isAvailable = nextIsAvailable;
+    this._updateAvailabilityUI(nextStatus);
+
+    if (this.isAvailable) {
+      this._startLocationLoop();
+    } else {
+      this._stopLocationLoop();
+    }
+
     try {
       const data = await Chariot.Util.post('/api/driver/toggle-availability');
-      this.isAvailable = data.is_available;
-      this._updateAvailabilityUI(data.status);
+      
+      // If server returned a state different from our optimistic state, sync it
+      if (data.is_available !== this.isAvailable) {
+        this.isAvailable = data.is_available;
+        this._updateAvailabilityUI(data.status);
+        if (this.isAvailable) {
+          this._startLocationLoop();
+        } else {
+          this._stopLocationLoop();
+        }
+      }
 
       if (this.isAvailable) {
-        this._startLocationLoop();
         Chariot.Toast.success('You are now available for rides.', 'Online');
       } else {
-        this._stopLocationLoop();
         Chariot.Toast.info('You are now offline.', 'Offline');
       }
     } catch (err) {
+      // Revert to original state on error
+      this.isAvailable = currentIsAvailable;
+      const originalStatus = currentIsAvailable ? 'available' : 'offline';
+      this._updateAvailabilityUI(originalStatus);
+      if (this.isAvailable) {
+        this._startLocationLoop();
+      } else {
+        this._stopLocationLoop();
+      }
       Chariot.Toast.error(err.message || 'Could not update status.');
     } finally {
-      Chariot.Buttons.setLoading(btn, false);
+      if (btn) btn.disabled = false;
     }
   },
 
@@ -1946,6 +1978,7 @@ Chariot.Driver = {
     const statusEl = $('#driverStatusText');
     const dot      = $('#driverStatusDot');
     const rideForm = $('#createRideForm');
+    const tipsCard = $('.tips-card');
 
     if (btn) {
       btn.className = btn.className.replace(/go-available|go-offline/, '');
@@ -1954,7 +1987,7 @@ Chariot.Driver = {
         btn.innerHTML = '<i class="fa-solid fa-toggle-on"></i> Go Offline';
       } else {
         btn.classList.add('go-available');
-        btn.innerHTML = '<i class="fa-solid fa-toggle-off"></i> Go Available';
+        btn.innerHTML = '<i class="fa-solid fa-toggle-off"></i> Go Online';
       }
     }
 
@@ -1969,6 +2002,11 @@ Chariot.Driver = {
     /* Show/hide create-ride form */
     if (rideForm) {
       rideForm.style.display = status === 'available' ? '' : 'none';
+    }
+
+    /* Show/hide tips card */
+    if (tipsCard) {
+      tipsCard.style.display = status === 'available' ? 'none' : '';
     }
   },
 

@@ -559,10 +559,10 @@
         <button
           class="avail-toggle-btn go-available"
           id="availabilityToggle"
-          aria-label="Go available"
+          aria-label="Go online"
         >
           <i class="fa-solid fa-toggle-off"></i>
-          Go Available
+          Go Online
         </button>
       @endif
 
@@ -792,7 +792,7 @@
     </div>
     <div class="tip-row">
       <div class="tip-icon"><i class="fa-solid fa-toggle-on"></i></div>
-      <span>Toggle <strong>Go Available</strong> when you're ready to accept ride requests.</span>
+      <span>Toggle <strong>Go Online</strong> when you're ready to accept ride requests.</span>
     </div>
     <div class="tip-row">
       <div class="tip-icon"><i class="fa-solid fa-route"></i></div>
@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (createForm) createForm.style.display = (isAvailable && !hasRide) ? '' : 'none';
       if (banner)     banner.style.display      = hasRide ? '' : 'none';
-    }, 500);
+    }, 20);
   });
 
 });
