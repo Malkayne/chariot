@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     git \
+    ca-certificates \
     && docker-php-ext-configure gd --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip gd bcmath opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
