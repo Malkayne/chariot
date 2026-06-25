@@ -40,6 +40,8 @@
 
   <title>Chariot — Smart Mobility for the Saints | RCCG Camp</title>
 
+  @include('partials.seo-meta')
+
   {{-- ═══════════════════════════════════════════════════════════
        FONTS — used globally, load on every page
        ═══════════════════════════════════════════════════════════ --}}

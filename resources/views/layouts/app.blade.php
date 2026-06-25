@@ -20,6 +20,8 @@
 
   <title>@yield('title', 'Chariot') — RCCG Camp Chariot</title>
 
+  @include('partials.seo-meta')
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
