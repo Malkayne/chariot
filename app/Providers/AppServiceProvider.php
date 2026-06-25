@@ -22,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
 
+        if (config('app.env') === 'production') {
+            \URL::forceScheme('https');
+        }
+
         view()->composer('layouts.app', function ($view) {
             if (auth()->check() && auth()->user()->role === 'rider') {
                 $pendingCount = auth()->user()
